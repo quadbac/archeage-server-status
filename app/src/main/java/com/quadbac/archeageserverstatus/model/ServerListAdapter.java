@@ -42,13 +42,16 @@ public class ServerListAdapter extends ArrayAdapter<ServerStatus> {
         TextView serverNameView = (TextView) rowView.findViewById(R.id.serverNameView);
         ImageView serverStatusImageView = (ImageView) rowView.findViewById(R.id.serverStatusImageView);
         TextView serverLatencyView = (TextView) rowView.findViewById(R.id.serverLatencyView);
+        ImageView notifyImageView = (ImageView) rowView.findViewById(R.id.notifyImageView);
+        serverNameView.setWidth(((rowView.getWidth()*60)/100));
 
         // 4. Set the view contents from the ArrayList
         serverNameView.setText(itemsArrayList.get(position).getName());
         if (itemsArrayList.get(position).getStatus().equalsIgnoreCase("up")) {serverStatusImageView.setImageResource(R.drawable.up);}
            else {serverStatusImageView.setImageResource(R.drawable.down);}
         serverLatencyView.setText(itemsArrayList.get(position).getLatency());
-
+        if (itemsArrayList.get(position).isNotify()) {notifyImageView.setVisibility(ImageView.VISIBLE);}
+            else {notifyImageView.setVisibility(ImageView.INVISIBLE);}
         // 5. return rowView
         return rowView;
     }

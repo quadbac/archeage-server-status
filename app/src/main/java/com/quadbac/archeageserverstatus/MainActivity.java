@@ -1,5 +1,6 @@
 package com.quadbac.archeageserverstatus;
 
+import java.util.ArrayList;
 import java.util.Locale;
 
 import android.app.Activity;
@@ -10,19 +11,15 @@ import android.app.FragmentTransaction;
 import android.support.v13.app.FragmentPagerAdapter;
 import android.os.Bundle;
 import android.support.v4.view.ViewPager;
-import android.view.Gravity;
-import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.TextView;
 
 
 public class MainActivity extends Activity implements ActionBar.TabListener {
 
     private final int SERVICE_PAGE = 0;
     private final int SERVER_PAGE = 1;
+    private ArrayList<String> notifyList = new ArrayList<String>();
 
     /**
      * The {@link android.support.v4.view.PagerAdapter} that will provide
@@ -128,9 +125,9 @@ public class MainActivity extends Activity implements ActionBar.TabListener {
         public Fragment getItem(int position) {
             switch (position) {
                 case SERVICE_PAGE:
-                    return ServiceStatusFragment.newInstance();
+                    return ServiceStatusFragment.newInstance(notifyList);
                 case SERVER_PAGE:
-                    return ServerStatusFragment.newInstance();
+                    return ServerStatusFragment.newInstance(notifyList);
             }
             return null;
             // getItem is called to instantiate the fragment for the given page.
@@ -154,6 +151,4 @@ public class MainActivity extends Activity implements ActionBar.TabListener {
             return null;
         }
     }
-
-
 }

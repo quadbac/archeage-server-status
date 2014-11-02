@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.List;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -33,19 +32,16 @@ public class StatusReader {
     private static String SERVER_STATUS_URI = "http://api.youenvy.us/?request=status&output=JSON";
     private OnStatusReadListener listener;
     private int region;
+    private ArrayList<String> notifyList;
 
-    public StatusReader(OnStatusReadListener listener, int region) {
+    public StatusReader(OnStatusReadListener listener, int region, ArrayList<String> notifyList) {
         this.listener = listener;
         this.region = region;
+        this.notifyList = notifyList;
     }
 
     public void readStatus() {
         new GetJSONTask().execute(SERVER_STATUS_URI);
-//        ArrayList<ServerStatus> serverList = new ArrayList<ServerStatus>();
-//        serverList.add(new ServerStatus("testServer1", "UP", "111"));
-//        serverList.add(new ServerStatus("testServer2", "UP", "111"));
-//        serverList.add(new ServerStatus("testServer3", "UP", "111"));
-//        listener.onStatusRead(serverList);
     }
 
     private class GetJSONTask extends AsyncTask<String, Void, String> {
@@ -101,21 +97,21 @@ public class StatusReader {
                     array = servers.getJSONArray("europe");
                     for (int i = 0; i < array.length(); i++) {
                         JSONObject o = array.getJSONObject(i);
-                        serverList.add(new ServerStatus(o.getString("serverName"), o.getString("serverStatus"), o.getString("latency")));
+                        serverList.add(new ServerStatus(o.getString("serverName"), o.getString("serverStatus"), o.getString("latency"), notifyList.contains(o.getString("serverName"))));
                     }
                     break;
                 case NA_SERVERS:
                     array = servers.getJSONArray("northAmerica");
                     for (int i = 0; i < array.length(); i++) {
                         JSONObject o = array.getJSONObject(i);
-                        serverList.add(new ServerStatus(o.getString("serverName"), o.getString("serverStatus"), o.getString("latency")));
+                        serverList.add(new ServerStatus(o.getString("serverName"), o.getString("serverStatus"), o.getString("latency"), notifyList.contains(o.getString("serverName"))));
                     }
                     break;
                 case SERVICES:
                     array = envy.getJSONArray("services");
                     for (int i = 0; i < array.length(); i++) {
                         JSONObject o = array.getJSONObject(i);
-                        serverList.add(new ServerStatus(o.getString("serviceName"), o.getString("serviceStatus"), ""));
+                        serverList.add(new ServerStatus(o.getString("serviceName"), o.getString("serviceStatus"), "", notifyList.contains(o.getString("serviceName"))));
                     }
                     break;
             }
@@ -125,7 +121,6 @@ public class StatusReader {
         } catch (Exception e) {
             e.printStackTrace();
             listener.onStatusRead(serverList);
-            return;
         }
     }
 }

@@ -41,11 +41,15 @@ public class ServiceListAdapter extends ArrayAdapter<ServerStatus> {
         // 3. Get the views from the rowView
         TextView serviceNameView = (TextView) rowView.findViewById(R.id.serviceNameView);
         ImageView serviceStatusImageView = (ImageView) rowView.findViewById(R.id.serviceStatusImageView);
+        ImageView serviceNotifyImageView = (ImageView) rowView.findViewById(R.id.serviceNotifyImageView);
+        serviceNameView.setWidth(((rowView.getWidth()*80)/100));
 
         // 4. Set the view contents from the ArrayList
         serviceNameView.setText(itemsArrayList.get(position).getName());
         if (itemsArrayList.get(position).getStatus().equalsIgnoreCase("up")) {serviceStatusImageView.setImageResource(R.drawable.up);}
         else {serviceStatusImageView.setImageResource(R.drawable.down);}
+        if (itemsArrayList.get(position).isNotify()) {serviceNotifyImageView.setVisibility(ImageView.VISIBLE);}
+        else {serviceNotifyImageView.setVisibility(ImageView.INVISIBLE);}
 
         // 5. return rowView
         return rowView;
