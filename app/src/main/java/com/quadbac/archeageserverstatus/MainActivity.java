@@ -17,6 +17,8 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.media.RingtoneManager;
+import android.net.Uri;
 import android.os.Handler;
 import android.os.Message;
 import android.support.v13.app.FragmentPagerAdapter;
@@ -122,6 +124,7 @@ public class MainActivity extends Activity implements OnStatusReadListener, Acti
                             .setText(mSectionsPagerAdapter.getPageTitle(i))
                             .setTabListener(this));
         }
+//        sendNotification(new ServerStatus("Tester", "UP", "101", true, 2));
     }
 
     @Override
@@ -179,6 +182,7 @@ public class MainActivity extends Activity implements OnStatusReadListener, Acti
                         PendingIntent.FLAG_UPDATE_CURRENT
                 );
         mBuilder.setContentIntent(resultPendingIntent);
+        mBuilder.setDefaults(NotificationCompat.DEFAULT_ALL);
         NotificationManager mNotificationManager =
                 (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 // mId allows you to update the notification later on.
