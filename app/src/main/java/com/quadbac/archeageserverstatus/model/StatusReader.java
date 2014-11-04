@@ -30,7 +30,8 @@ public class StatusReader {
     private ArrayList<String> notifyList;
     private ArrayList<OnStatusReadListener> listeners = new ArrayList<OnStatusReadListener>();
 
-    public StatusReader(ArrayList<String> notifyList) {
+    public StatusReader(ArrayList<String> notifyList)
+    {
         this.notifyList = notifyList;
     }
 
@@ -61,11 +62,14 @@ public class StatusReader {
                     }
                 } else {
                     Log.e(urls[0], "Failed to retrieve JSON");
+                    return "FAIL";
                 }
             } catch (ClientProtocolException e) {
                 e.printStackTrace();
+                return "FAIL";
             } catch (IOException e) {
                 e.printStackTrace();
+                return "FAIL";
             }
             return builder.toString();
         }
@@ -81,32 +85,33 @@ public class StatusReader {
 
     private void parseJSON(String result) {
          ArrayList<ServerStatus> serverList = new ArrayList<ServerStatus>();
-        try {
-            JSONObject serverJSON = new JSONObject(result);
-            JSONObject envy = serverJSON.getJSONObject("envy");
-            JSONObject servers = envy.getJSONObject("servers");
-            JSONArray array;
-            array = servers.getJSONArray("europe");
-            for (int i = 0; i < array.length(); i++) {
-                JSONObject o = array.getJSONObject(i);
-                serverList.add(new ServerStatus(o.getString("serverName"), o.getString("serverStatus"), o.getString("latency"), notifyList.contains(o.getString("serverName")), ServerStatus.EU_SERVERS));
-            }
-            array = servers.getJSONArray("northAmerica");
-            for (int i = 0; i < array.length(); i++) {
-                JSONObject o = array.getJSONObject(i);
-                serverList.add(new ServerStatus(o.getString("serverName"), o.getString("serverStatus"), o.getString("latency"), notifyList.contains(o.getString("serverName")), ServerStatus.NA_SERVERS));
-            }
-            array = envy.getJSONArray("services");
-            for (int i = 0; i < array.length(); i++) {
-                JSONObject o = array.getJSONObject(i);
-                serverList.add(new ServerStatus(o.getString("serviceName"), o.getString("serviceStatus"), "", notifyList.contains(o.getString("serviceName")), ServerStatus.SERVICES));
-            }
+        if (!result.equals("FAIL")) {
+            try {
+                JSONObject serverJSON = new JSONObject(result);
+                JSONObject envy = serverJSON.getJSONObject("envy");
+                JSONObject servers = envy.getJSONObject("servers");
+                JSONArray array;
+                array = servers.getJSONArray("europe");
+                for (int i = 0; i < array.length(); i++) {
+                    JSONObject o = array.getJSONObject(i);
+                    serverList.add(new ServerStatus(o.getString("serverName"), o.getString("serverStatus"), o.getString("latency"), notifyList.contains(o.getString("serverName")), ServerStatus.EU_SERVERS));
+                }
+                array = servers.getJSONArray("northAmerica");
+                for (int i = 0; i < array.length(); i++) {
+                    JSONObject o = array.getJSONObject(i);
+                    serverList.add(new ServerStatus(o.getString("serverName"), o.getString("serverStatus"), o.getString("latency"), notifyList.contains(o.getString("serverName")), ServerStatus.NA_SERVERS));
+                }
+                array = envy.getJSONArray("services");
+                for (int i = 0; i < array.length(); i++) {
+                    JSONObject o = array.getJSONObject(i);
+                    serverList.add(new ServerStatus(o.getString("serviceName"), o.getString("serviceStatus"), "", notifyList.contains(o.getString("serviceName")), ServerStatus.SERVICES));
+                }
 
-            notifyStatusRead(serverList);
-
-        } catch (Exception e) {
-            e.printStackTrace();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
+        notifyStatusRead(serverList);
     }
 
     public void addListener (OnStatusReadListener listener) {

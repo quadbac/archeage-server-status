@@ -1,5 +1,6 @@
 package com.quadbac.archeageserverstatus;
 
+import java.lang.ref.WeakReference;
 import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -14,6 +15,7 @@ import android.app.FragmentManager;
 import android.app.FragmentTransaction;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -29,6 +31,9 @@ import android.support.v4.view.ViewPager;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.Button;
+import android.widget.Toast;
 
 import com.quadbac.archeageserverstatus.model.ServerListAdapter;
 import com.quadbac.archeageserverstatus.model.ServerStatus;
@@ -41,12 +46,15 @@ public class MainActivity extends Activity implements OnStatusReadListener, Acti
     private Handler statusHandler;
     private SharedPreferences mPrefs;
     private final static int READ_STATUS = 1;
+    private final static int STATUS_DELAY = 60000;
     private final static int SERVICE_PAGE = 0;
     private final static int EU_SERVER_PAGE = 1;
     private final static int NA_SERVER_PAGE = 2;
     private ArrayList<ServerStatus> serverList = new ArrayList<ServerStatus>();
     private ArrayList<String> notifyList = new ArrayList<String>();
     private int notificationId = 0;
+
+    private ProgressDialog statusReadDialog;
 
     /**
      * The {@link android.support.v4.view.PagerAdapter} that will provide
@@ -75,25 +83,17 @@ public class MainActivity extends Activity implements OnStatusReadListener, Acti
         statusReader = new StatusReader(notifyList);
         statusReader.addListener(this);
 
-        // Create the Handler which will request a new status read once per minute
 
-        statusHandler = new Handler(){
-            @Override
-            public void handleMessage(Message msg) {
-                // Do task here
-                if (msg.what == READ_STATUS) {
-                    statusReader.readStatus();
-                    if (!statusHandler.hasMessages(READ_STATUS)) statusHandler.sendEmptyMessageDelayed(READ_STATUS, 60000);
-                }
-            }
-        };
-        statusHandler.sendEmptyMessageDelayed(READ_STATUS, 0);
+        // Create the Handler which will request a new status read once per minute
+        statusHandler = new StatusHandler(this, STATUS_DELAY);
 
         setContentView(R.layout.activity_main);
 
         // Set up the action bar.
         final ActionBar actionBar = getActionBar();
         actionBar.setNavigationMode(ActionBar.NAVIGATION_MODE_TABS);
+
+        // Set up the ad
 
         // Create the adapter that will return a fragment for each of the three
         // primary sections of the activity.
@@ -124,12 +124,14 @@ public class MainActivity extends Activity implements OnStatusReadListener, Acti
                             .setText(mSectionsPagerAdapter.getPageTitle(i))
                             .setTabListener(this));
         }
+        statusHandler.sendEmptyMessageDelayed(READ_STATUS, 0);
 //        sendNotification(new ServerStatus("Tester", "UP", "101", true, 2));
     }
 
     @Override
     protected void onPause() {
         super.onPause();
+
         // Save list of notification servers to shared preferences
         mPrefs = getSharedPreferences("notificationPrefs", Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = mPrefs.edit();
@@ -142,7 +144,7 @@ public class MainActivity extends Activity implements OnStatusReadListener, Acti
     public void onStatusRead(ArrayList<ServerStatus> newServerList) {
         // Check for possible notifications needed
         for (ServerStatus newStatus : newServerList) {
-            if (notifyList.contains(newStatus.getName()) && (serverList!=null)) {
+            if (notifyList.contains(newStatus.getName()) && (serverList != null)) {
                 for (ServerStatus oldStatus : serverList) {
                     if ((oldStatus.getName().equals(newStatus.getName())) && !(oldStatus.getStatus().equals(newStatus.getStatus()))) {
                         // Status has changed and server is on the notify list, fire off a notification
@@ -151,14 +153,20 @@ public class MainActivity extends Activity implements OnStatusReadListener, Acti
                 }
             }
         }
+        statusReadDialog.dismiss();
         this.serverList = newServerList;
     }
 
+    public void onClickRetryButton(View v){
+        statusHandler.sendEmptyMessageDelayed(READ_STATUS, 0);
+    }
+
+
     private void sendNotification(ServerStatus newStatus) {
         Date date = new Date();
-        String dateTime = DateFormat.getTimeInstance().format(date)+" on "+DateFormat.getDateInstance().format(date);
-        String title = newStatus.getName()+" status";
-        String text = ((newStatus.getRegion()==ServerStatus.SERVICES)?"Service":"Server")+" "+newStatus.getStatus().toLowerCase()+" at "+dateTime;
+        String dateTime = DateFormat.getTimeInstance().format(date) + " on " + DateFormat.getDateInstance().format(date);
+        String title = newStatus.getName() + " status";
+        String text = ((newStatus.getRegion() == ServerStatus.SERVICES) ? "Service" : "Server") + " " + newStatus.getStatus().toLowerCase() + " at " + dateTime;
         NotificationCompat.Builder mBuilder =
                 new NotificationCompat.Builder(this)
                         .setSmallIcon(R.drawable.ic_notification)
@@ -202,9 +210,9 @@ public class MainActivity extends Activity implements OnStatusReadListener, Acti
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
-        if (id == R.id.action_settings) {
-            return true;
-        }
+//       if (id == R.id.action_settings) {
+//            return true;
+//        }
         return super.onOptionsItemSelected(item);
     }
 
@@ -238,16 +246,13 @@ public class MainActivity extends Activity implements OnStatusReadListener, Acti
             ServerStatusFragment newFragment = null;
             switch (position) {
                 case SERVICE_PAGE:
-                    newFragment = ServerStatusFragment.newInstance(notifyList, ServerStatus.SERVICES);
-                    statusHandler.sendEmptyMessageDelayed(READ_STATUS, 0);
+                    newFragment = ServerStatusFragment.newInstance(serverList, notifyList, ServerStatus.SERVICES);
                     break;
                 case EU_SERVER_PAGE:
-                    newFragment = ServerStatusFragment.newInstance(notifyList, ServerStatus.EU_SERVERS);
-                    statusHandler.sendEmptyMessageDelayed(READ_STATUS, 0);
+                    newFragment = ServerStatusFragment.newInstance(serverList, notifyList, ServerStatus.EU_SERVERS);
                     break;
                 case NA_SERVER_PAGE:
-                    newFragment = ServerStatusFragment.newInstance(notifyList, ServerStatus.NA_SERVERS);
-                    statusHandler.sendEmptyMessageDelayed(READ_STATUS, 0);
+                    newFragment = ServerStatusFragment.newInstance(serverList, notifyList, ServerStatus.NA_SERVERS);
                     break;
             }
             statusReader.addListener(newFragment);
@@ -275,5 +280,29 @@ public class MainActivity extends Activity implements OnStatusReadListener, Acti
             return null;
         }
 
+    }
+
+    private static class StatusHandler extends Handler {
+        private final WeakReference<MainActivity> mainActivityRef;
+        private int statusDelay;
+
+        public StatusHandler(MainActivity mainActivity, int statusDelay) {
+            mainActivityRef = new WeakReference<MainActivity>(mainActivity);
+            this.statusDelay = statusDelay;
+        }
+
+        @Override
+        public void handleMessage(Message msg) {
+            // Do task here
+            if (msg.what == READ_STATUS) {
+                MainActivity context = mainActivityRef.get();
+                if (context != null) {
+                    context.statusReadDialog = ProgressDialog.show(context, "Please Wait...", "Downloading Server Status ...", true, true);
+                    context.statusReader.readStatus();
+                    if (!context.statusHandler.hasMessages(READ_STATUS))
+                        context.statusHandler.sendEmptyMessageDelayed(READ_STATUS, statusDelay);
+                }
+            }
+        }
     }
 }

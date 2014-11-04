@@ -27,7 +27,6 @@ public class ServerListAdapter extends ArrayAdapter<ServerStatus> implements Fil
     private int region;
 
     public ServerListAdapter(Context context, ArrayList<ServerStatus> serverList, int region) {
-
         super(context, R.layout.server_list_item, serverList);
 
         this.context = context;
