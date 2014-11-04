@@ -2,11 +2,16 @@
 <resources>
 
     <string name="app_name">ArcheAge Server Status</string>
-<string name="title_section1">Service Status</string>
-<string name="title_section2">EU Server Status</string>
-<string name="title_section3">NA Server Status</string>
-<string name="action_settings">Settings</string>
-<string name="service_name_title">Service Name</string>
-<string name="service_status_title">Status</string>
+    <string name="banner_ad_unit_id">ca-app-pub-1124640712520929/6062207494</string>
+    <string name="title_section1">Service Status</string>
+    <string name="title_section2">EU Server Status</string>
+    <string name="title_section3">NA Server Status</string>
+    <string name="action_settings">Settings</string>
+    <string name="service_name_title">Service Name</string>
+    <string name="service_status_title">Status</string>
+    <string name="retry_button_text">Retry</string>
+    <string name="no_items_message">Unable to read server status\nCheck connection</string>
+    <string name="title_server_name">Server</string>
+    <string name="title_notify">Notify</string>
 
-    </resources>
+</resources>
