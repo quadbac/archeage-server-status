@@ -25,18 +25,12 @@ import com.quadbac.archeageserverstatus.OnStatusReadListener;
 
 public class StatusReader {
 
-    public final static int EU_SERVERS = 1;
-    public final static int NA_SERVERS = 2;
-    public final static int SERVICES = 3;
 
     private static String SERVER_STATUS_URI = "http://api.youenvy.us/?request=status&output=JSON";
-    private OnStatusReadListener listener;
-    private int region;
     private ArrayList<String> notifyList;
+    private ArrayList<OnStatusReadListener> listeners = new ArrayList<OnStatusReadListener>();
 
-    public StatusReader(OnStatusReadListener listener, int region, ArrayList<String> notifyList) {
-        this.listener = listener;
-        this.region = region;
+    public StatusReader(ArrayList<String> notifyList) {
         this.notifyList = notifyList;
     }
 
@@ -92,34 +86,39 @@ public class StatusReader {
             JSONObject envy = serverJSON.getJSONObject("envy");
             JSONObject servers = envy.getJSONObject("servers");
             JSONArray array;
-            switch (region) {
-                case EU_SERVERS:
-                    array = servers.getJSONArray("europe");
-                    for (int i = 0; i < array.length(); i++) {
-                        JSONObject o = array.getJSONObject(i);
-                        serverList.add(new ServerStatus(o.getString("serverName"), o.getString("serverStatus"), o.getString("latency"), notifyList.contains(o.getString("serverName"))));
-                    }
-                    break;
-                case NA_SERVERS:
-                    array = servers.getJSONArray("northAmerica");
-                    for (int i = 0; i < array.length(); i++) {
-                        JSONObject o = array.getJSONObject(i);
-                        serverList.add(new ServerStatus(o.getString("serverName"), o.getString("serverStatus"), o.getString("latency"), notifyList.contains(o.getString("serverName"))));
-                    }
-                    break;
-                case SERVICES:
-                    array = envy.getJSONArray("services");
-                    for (int i = 0; i < array.length(); i++) {
-                        JSONObject o = array.getJSONObject(i);
-                        serverList.add(new ServerStatus(o.getString("serviceName"), o.getString("serviceStatus"), "", notifyList.contains(o.getString("serviceName"))));
-                    }
-                    break;
+            array = servers.getJSONArray("europe");
+            for (int i = 0; i < array.length(); i++) {
+                JSONObject o = array.getJSONObject(i);
+                serverList.add(new ServerStatus(o.getString("serverName"), o.getString("serverStatus"), o.getString("latency"), notifyList.contains(o.getString("serverName")), ServerStatus.EU_SERVERS));
+            }
+            array = servers.getJSONArray("northAmerica");
+            for (int i = 0; i < array.length(); i++) {
+                JSONObject o = array.getJSONObject(i);
+                serverList.add(new ServerStatus(o.getString("serverName"), o.getString("serverStatus"), o.getString("latency"), notifyList.contains(o.getString("serverName")), ServerStatus.NA_SERVERS));
+            }
+            array = envy.getJSONArray("services");
+            for (int i = 0; i < array.length(); i++) {
+                JSONObject o = array.getJSONObject(i);
+                serverList.add(new ServerStatus(o.getString("serviceName"), o.getString("serviceStatus"), "", notifyList.contains(o.getString("serviceName")), ServerStatus.SERVICES));
             }
 
-            listener.onStatusRead(serverList);
+            notifyStatusRead(serverList);
 
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    public void addListener (OnStatusReadListener listener) {
+        listeners.add(listener);
+    }
+
+    public void removeListener (OnStatusReadListener listener) {
+        listeners.remove(listener);
+    }
+
+    public void notifyStatusRead (ArrayList<ServerStatus> serverList) {
+        for (OnStatusReadListener listener : listeners) {
             listener.onStatusRead(serverList);
         }
     }

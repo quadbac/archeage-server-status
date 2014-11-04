@@ -2,11 +2,11 @@
 <resources>
 
     <string name="app_name">ArcheAge Server Status</string>
-    <string name="title_section1">Service Status</string>
-    <string name="title_section2">Server Status</string>
-    <string name="title_section3">Twitter Feed</string>
-    <string name="action_settings">Settings</string>
-    <string name="service_name_title">Service Name</string>
-    <string name="service_status_title">Status</string>
+<string name="title_section1">Service Status</string>
+<string name="title_section2">EU Server Status</string>
+<string name="title_section3">NA Server Status</string>
+<string name="action_settings">Settings</string>
+<string name="service_name_title">Service Name</string>
+<string name="service_status_title">Status</string>
 
-</resources>
+    </resources>
