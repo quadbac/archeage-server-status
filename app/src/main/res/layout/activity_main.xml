@@ -5,13 +5,39 @@
     android:layout_height="match_parent"
     android:background="@android:color/background_dark">
 
-<android.support.v4.view.ViewPager xmlns:android="http://schemas.android.com/apk/res/android"
+    <android.support.v4.view.ViewPager xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/pager"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".MainActivity"
-    android:layout_above="@+id/adFrameLayout" />
+        android:layout_alignParentTop="true"
+        android:layout_above="@+id/monitorSwitchLayout" />
+
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/monitorSwitchLayout"
+        android:layout_above="@+id/adFrameLayout"
+        android:background="@android:color/holo_green_light">
+
+        <Switch
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:text="Server Status Monitoring"
+            android:id="@+id/monitorSwitch"
+            android:textColor="@android:color/primary_text_dark"
+            android:paddingLeft="32dp"
+            android:clickable="true"
+            android:checked="false"
+            android:layout_alignParentLeft="true"
+            android:layout_alignParentStart="true"
+            android:enabled="true"
+            android:layout_marginTop="2dp"
+            android:layout_marginBottom="2dp"
+            android:background="@android:color/background_dark" />
+    </LinearLayout>
 
     <FrameLayout
         android:layout_width="fill_parent"

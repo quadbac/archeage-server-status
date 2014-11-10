@@ -18,14 +18,13 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.util.Log;
 
 import com.quadbac.archeageserverstatus.OnStatusReadListener;
 
 public class StatusReader {
-
-
     private static String SERVER_STATUS_URI = "http://api.youenvy.us/?request=status&output=JSON";
     private ArrayList<String> notifyList;
     private ArrayList<OnStatusReadListener> listeners = new ArrayList<OnStatusReadListener>();

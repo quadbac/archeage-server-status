@@ -2,6 +2,7 @@ package com.quadbac.archeageserverstatus;
 import android.app.Fragment;
 import android.graphics.PorterDuff;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -60,8 +61,9 @@ public class ServerStatusFragment extends Fragment implements AdapterView.OnItem
         if (region == ServerStatus.SERVICES) titleNameView.setText("Service");
         if (serverList.size()==0) {noItemsLayout.setVisibility(View.VISIBLE);} else {noItemsLayout.setVisibility(View.GONE);}
         serverListAdapter = new ServerListAdapter(getActivity(), serverList, region);
-        serverListView.setAdapter(serverListAdapter);
         serverListAdapter.getFilter().filter(Integer.toString(region));
+        serverListView.setAdapter(serverListAdapter);
+        serverListView.setClickable(true);
         serverListView.setOnItemClickListener(this);
         return rootView;
     }
@@ -72,12 +74,13 @@ public class ServerStatusFragment extends Fragment implements AdapterView.OnItem
         if (server.isNotify()) {
             server.setNotify(false);
             notifyList.remove(server.getName());
-            serverListAdapter.notifyDataSetChanged();
         } else {
             server.setNotify(true);
             notifyList.add(server.getName());
-            serverListAdapter.notifyDataSetChanged();
         }
+        ((MainActivity)getActivity()).saveNotifyList(notifyList);
+        serverListAdapter.notifyDataSetChanged();
+
     }
 
     @Override
@@ -85,8 +88,8 @@ public class ServerStatusFragment extends Fragment implements AdapterView.OnItem
         this.serverList = serverList;
         if (serverList.size()==0) {noItemsLayout.setVisibility(View.VISIBLE);} else {noItemsLayout.setVisibility(View.GONE);}
         serverListAdapter = new ServerListAdapter(getActivity(), this.serverList, region);
-        serverListView.setAdapter(serverListAdapter);
         serverListAdapter.getFilter().filter(Integer.toString(region));
+        serverListView.setAdapter(serverListAdapter);
     }
 
     @Override

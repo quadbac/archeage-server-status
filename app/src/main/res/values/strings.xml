@@ -11,6 +11,7 @@
     <string name="service_status_title">Status</string>
     <string name="retry_button_text">Retry</string>
     <string name="no_items_message">Unable to read server status\nCheck connection</string>
+    <string name="no_service_message">Server status monitoring disabled</string>
     <string name="title_server_name">Server</string>
     <string name="title_notify">Notify</string>
 

@@ -1,9 +1,6 @@
 package com.quadbac.archeageserverstatus;
 
-import java.lang.ref.WeakReference;
-import java.text.DateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
@@ -13,48 +10,44 @@ import android.app.ActionBar;
 import android.app.Fragment;
 import android.app.FragmentManager;
 import android.app.FragmentTransaction;
+import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.ProgressDialog;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.media.RingtoneManager;
-import android.net.Uri;
-import android.os.Handler;
-import android.os.Message;
 import android.support.v13.app.FragmentPagerAdapter;
 import android.os.Bundle;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.TaskStackBuilder;
+import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.view.ViewPager;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.Button;
-import android.widget.Toast;
+import android.widget.CompoundButton;
+import android.widget.Switch;
 
-import com.quadbac.archeageserverstatus.model.ServerListAdapter;
 import com.quadbac.archeageserverstatus.model.ServerStatus;
-import com.quadbac.archeageserverstatus.model.StatusReader;
 
 
-public class MainActivity extends Activity implements OnStatusReadListener, ActionBar.TabListener {
+public class MainActivity extends Activity implements ActionBar.TabListener, Switch.OnCheckedChangeListener {
 
-    private StatusReader statusReader;
-    private Handler statusHandler;
     private SharedPreferences mPrefs;
-    private final static int READ_STATUS = 1;
-    private final static int STATUS_DELAY = 60000;
+    private StatusReadReceiver statusReadReceiver;
     private final static int SERVICE_PAGE = 0;
     private final static int EU_SERVER_PAGE = 1;
     private final static int NA_SERVER_PAGE = 2;
+    private ArrayList<OnStatusReadListener> listeners = new ArrayList<OnStatusReadListener>();
     private ArrayList<ServerStatus> serverList = new ArrayList<ServerStatus>();
     private ArrayList<String> notifyList = new ArrayList<String>();
-    private int notificationId = 0;
 
     private ProgressDialog statusReadDialog;
+    private Switch monitorSwitch;
 
     /**
      * The {@link android.support.v4.view.PagerAdapter} that will provide
@@ -79,15 +72,13 @@ public class MainActivity extends Activity implements OnStatusReadListener, Acti
         Set<String> notificationSet = mPrefs.getStringSet("notificationSet", new HashSet<String>());
         notifyList = new ArrayList<String>(notificationSet);
 
-        // Create the Status reader
-        statusReader = new StatusReader(notifyList);
-        statusReader.addListener(this);
-
-
         // Create the Handler which will request a new status read once per minute
-        statusHandler = new StatusHandler(this, STATUS_DELAY);
+//        statusHandler = new StatusHandler(this, STATUS_DELAY);
 
         setContentView(R.layout.activity_main);
+
+        monitorSwitch = (Switch) findViewById(R.id.monitorSwitch);
+        monitorSwitch.setOnCheckedChangeListener(this);
 
         // Set up the action bar.
         final ActionBar actionBar = getActionBar();
@@ -124,77 +115,37 @@ public class MainActivity extends Activity implements OnStatusReadListener, Acti
                             .setText(mSectionsPagerAdapter.getPageTitle(i))
                             .setTabListener(this));
         }
-        statusHandler.sendEmptyMessageDelayed(READ_STATUS, 0);
-//        sendNotification(new ServerStatus("Tester", "UP", "101", true, 2));
+        startRepeatingReaderService();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Check whether the RepeatingReaderService is running & set monitorSwitch accordingly
+        monitorSwitch.setChecked(RepeatingReaderService.isRunning);
+
+        // Register to receive broadcasts from the FeedReaderService
+        IntentFilter feedReaderFilter = new IntentFilter(FeedReaderService.BROADCAST_READING_ACTION);
+        feedReaderFilter.addAction(FeedReaderService.BROADCAST_RESULTS_ACTION);
+        feedReaderFilter.addAction(RepeatingReaderService.BROADCAST_READER_RUNNING);
+        feedReaderFilter.addAction(RepeatingReaderService.BROADCAST_READER_STOPPED);
+        statusReadReceiver = new StatusReadReceiver();
+        LocalBroadcastManager.getInstance(getApplicationContext()).registerReceiver(
+                statusReadReceiver,
+                feedReaderFilter);
+        // Fire off a single server status read to refresh the server lists
+        startFeedReaderService();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-
-        // Save list of notification servers to shared preferences
-        mPrefs = getSharedPreferences("notificationPrefs", Context.MODE_PRIVATE);
-        SharedPreferences.Editor editor = mPrefs.edit();
-        Set<String> notificationSet = new HashSet<String>(notifyList);
-        editor.putStringSet("notificationSet", notificationSet);
-        editor.commit();
-    }
-
-    @Override
-    public void onStatusRead(ArrayList<ServerStatus> newServerList) {
-        // Check for possible notifications needed
-        for (ServerStatus newStatus : newServerList) {
-            if (notifyList.contains(newStatus.getName()) && (serverList != null)) {
-                for (ServerStatus oldStatus : serverList) {
-                    if ((oldStatus.getName().equals(newStatus.getName())) && !(oldStatus.getStatus().equals(newStatus.getStatus()))) {
-                        // Status has changed and server is on the notify list, fire off a notification
-                        sendNotification(newStatus);
-                    }
-                }
-            }
-        }
-        statusReadDialog.dismiss();
-        this.serverList = newServerList;
+        saveNotifyList(notifyList);
+        LocalBroadcastManager.getInstance(getApplicationContext()).unregisterReceiver(statusReadReceiver);
     }
 
     public void onClickRetryButton(View v){
-        statusHandler.sendEmptyMessageDelayed(READ_STATUS, 0);
-    }
-
-
-    private void sendNotification(ServerStatus newStatus) {
-        Date date = new Date();
-        String dateTime = DateFormat.getTimeInstance().format(date) + " on " + DateFormat.getDateInstance().format(date);
-        String title = newStatus.getName() + " status";
-        String text = ((newStatus.getRegion() == ServerStatus.SERVICES) ? "Service" : "Server") + " " + newStatus.getStatus().toLowerCase() + " at " + dateTime;
-        NotificationCompat.Builder mBuilder =
-                new NotificationCompat.Builder(this)
-                        .setSmallIcon(R.drawable.ic_notification)
-                        .setContentTitle(title)
-                        .setContentText(text);
-// Creates an explicit intent for an Activity in your app
-        Intent resultIntent = new Intent(this, MainActivity.class);
-
-// The stack builder object will contain an artificial back stack for the
-// started Activity.
-// This ensures that navigating backward from the Activity leads out of
-// your application to the Home screen.
-        TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
-// Adds the back stack for the Intent (but not the Intent itself)
-        stackBuilder.addParentStack(MainActivity.class);
-// Adds the Intent that starts the Activity to the top of the stack
-        stackBuilder.addNextIntent(resultIntent);
-        PendingIntent resultPendingIntent =
-                stackBuilder.getPendingIntent(
-                        0,
-                        PendingIntent.FLAG_UPDATE_CURRENT
-                );
-        mBuilder.setContentIntent(resultPendingIntent);
-        mBuilder.setDefaults(NotificationCompat.DEFAULT_ALL);
-        NotificationManager mNotificationManager =
-                (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-// mId allows you to update the notification later on.
-        mNotificationManager.notify(notificationId++, mBuilder.build());
+        startFeedReaderService();
     }
 
     @Override
@@ -231,6 +182,59 @@ public class MainActivity extends Activity implements OnStatusReadListener, Acti
     public void onTabReselected(ActionBar.Tab tab, FragmentTransaction fragmentTransaction) {
     }
 
+    public void startFeedReaderService(){
+        Intent readStatusIntent = new Intent(this, FeedReaderService.class);
+        readStatusIntent.putParcelableArrayListExtra(FeedReaderService.CURRENT_SERVER_LIST, serverList);
+        startService(readStatusIntent);
+    }
+
+    public void startRepeatingReaderService(){
+        Intent repeatingReadIntent = new Intent(this, RepeatingReaderService.class);
+        repeatingReadIntent.putParcelableArrayListExtra(FeedReaderService.CURRENT_SERVER_LIST, serverList);
+        startService(repeatingReadIntent);
+    }
+
+    public void stopRepeatingReaderService(){
+        Intent repeatingReadIntent = new Intent(this, RepeatingReaderService.class);
+        stopService(repeatingReadIntent);
+    }
+
+    public void showStatusReadDialog(){
+        statusReadDialog = ProgressDialog.show(this, "Please Wait...", "Downloading Server Status ...", true, true);
+
+    }
+
+    public void addListener (OnStatusReadListener listener) {
+        listeners.add(listener);
+    }
+
+    public void removeListener (OnStatusReadListener listener) {
+        listeners.remove(listener);
+    }
+
+    public void removeAllListeners () {
+        listeners.removeAll(listeners);
+    }
+
+    public void saveNotifyList(ArrayList<String> notifyList) {
+        // Save list of notification servers to shared preferences
+        mPrefs = getSharedPreferences("notificationPrefs", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = mPrefs.edit();
+        Set<String> notificationSet = new HashSet<String>(notifyList);
+        editor.putStringSet("notificationSet", notificationSet);
+        editor.commit();
+
+    }
+
+    @Override
+    public void onCheckedChanged(CompoundButton compoundButton, boolean isEnabled) {
+        if (isEnabled) {
+            startRepeatingReaderService();
+        } else {
+            stopRepeatingReaderService();
+        }
+    }
+
     /**
      * A {@link FragmentPagerAdapter} that returns a fragment corresponding to
      * one of the sections/tabs/pages.
@@ -247,15 +251,17 @@ public class MainActivity extends Activity implements OnStatusReadListener, Acti
             switch (position) {
                 case SERVICE_PAGE:
                     newFragment = ServerStatusFragment.newInstance(serverList, notifyList, ServerStatus.SERVICES);
+                    MainActivity.this.addListener(newFragment);
                     break;
                 case EU_SERVER_PAGE:
                     newFragment = ServerStatusFragment.newInstance(serverList, notifyList, ServerStatus.EU_SERVERS);
+                    MainActivity.this.addListener(newFragment);
                     break;
                 case NA_SERVER_PAGE:
                     newFragment = ServerStatusFragment.newInstance(serverList, notifyList, ServerStatus.NA_SERVERS);
+                    MainActivity.this.addListener(newFragment);
                     break;
             }
-            statusReader.addListener(newFragment);
             return newFragment;
             // getItem is called to instantiate the fragment for the given page.
         }
@@ -282,26 +288,33 @@ public class MainActivity extends Activity implements OnStatusReadListener, Acti
 
     }
 
-    private static class StatusHandler extends Handler {
-        private final WeakReference<MainActivity> mainActivityRef;
-        private int statusDelay;
-
-        public StatusHandler(MainActivity mainActivity, int statusDelay) {
-            mainActivityRef = new WeakReference<MainActivity>(mainActivity);
-            this.statusDelay = statusDelay;
+    // Broadcast receiver for receiving status updates from the FeedReaderService
+    private class StatusReadReceiver extends BroadcastReceiver
+    {
+        // Prevents instantiation
+        private StatusReadReceiver() {
         }
+        // Called when the StatusReadReceiver gets an Intent it's registered to receive
+        public void onReceive(Context context, Intent intent) {
 
-        @Override
-        public void handleMessage(Message msg) {
-            // Do task here
-            if (msg.what == READ_STATUS) {
-                MainActivity context = mainActivityRef.get();
-                if (context != null) {
-                    context.statusReadDialog = ProgressDialog.show(context, "Please Wait...", "Downloading Server Status ...", true, true);
-                    context.statusReader.readStatus();
-                    if (!context.statusHandler.hasMessages(READ_STATUS))
-                        context.statusHandler.sendEmptyMessageDelayed(READ_STATUS, statusDelay);
+            if (intent.getAction().equals(FeedReaderService.BROADCAST_READING_ACTION)) {
+                    showStatusReadDialog();
+            }
+
+            if (intent.getAction().equals(FeedReaderService.BROADCAST_RESULTS_ACTION)) {
+                if (statusReadDialog != null) statusReadDialog.dismiss();
+                serverList = intent.getParcelableArrayListExtra(FeedReaderService.NEW_SERVER_LIST);
+                for (OnStatusReadListener listener : listeners) {
+                    listener.onStatusRead(serverList);
                 }
+            }
+
+            if (intent.getAction().equals(RepeatingReaderService.BROADCAST_READER_RUNNING)) {
+                monitorSwitch.setChecked(true);
+            }
+
+            if (intent.getAction().equals(RepeatingReaderService.BROADCAST_READER_STOPPED)) {
+                monitorSwitch.setChecked(false);
             }
         }
     }
